@@ -1,6 +1,8 @@
 package com.bibliocommons
 
 import com.bibliocommons.JobLogger.logger
+import com.bibliocommons.Neo4JUserGraph.{addSimilarity, addUserNode}
+import org.anormcypher.{Cypher, Neo4jREST}
 import org.apache.log4j.Logger
 import org.apache.spark.mllib.linalg.Vectors
 import org.apache.spark.mllib.linalg.distributed.RowMatrix
@@ -21,9 +23,11 @@ object BiblioUserSimilarities {
     val ratings = sc.textFile("/home/kdrakon/git/biblio-user-recommender/src/main/resources/ratings.csv").cache()
 
     logger.info("Mapping user ids...")
-    val userIdMap = sc.broadcast(ratings.map(line => line.split(",")(1)).distinct().zipWithUniqueId().collectAsMap())
-    val numberOfUsers = userIdMap.value.size * 2
-    logger.info(s"$numberOfUsers users found")
+    val userIds = ratings.map(line => line.split(",")(1)).distinct()
+    val userIdZip = userIds.zipWithUniqueId()
+    val userIdMap = sc.broadcast(userIdZip.collectAsMap())
+    val invertedUserIdMap = sc.broadcast(userIdMap.value.map(_.swap))
+    val numberOfUsers = sc.broadcast(userIdZip.values.max().toInt)
 
     logger.info("Starting grouping of items...")
     val itemGroupedRatings = ratings.groupBy(_.split(",")(0)).cache()
@@ -42,22 +46,43 @@ object BiblioUserSimilarities {
       // hack b/c my input data has duplicate ratings
       val userRatingPairs = userRatingPairsWithDupes.groupBy(pair => pair._1).flatMap(pairGroup => pairGroup._2.take(1)).toSeq
 
-      Vectors.sparse(numberOfUsers, userRatingPairs)
+      Vectors.sparse(numberOfUsers.value + 1, userRatingPairs)
     })
 
     logger.info("Starting similarity computation...")
     val ratingsMatrix = new RowMatrix(rowVectors)
     val similarityMatrix = ratingsMatrix.columnSimilarities(0.4)
 
-    logger.info("Similarity computation complete...")
-    logger.info(similarityMatrix.numRows())
-    logger.info(similarityMatrix.numCols())
-
-    similarityMatrix.entries.take(100).foreach(matrixEntry => {
-      val user1 = matrixEntry.i
-      val user2 = matrixEntry.j
-      val sim = matrixEntry.value
-      logger.info(s"User $user1 is similar to $user2 by $sim")
+    val similarityThreshold = 25.0
+    logger.info(s"Graphing similarities with threshold of $similarityThreshold ...")
+    similarityMatrix.entries.filter(_.value >= similarityThreshold).foreach(entry => {
+      val userA = invertedUserIdMap.value(entry.i)
+      val userB = invertedUserIdMap.value(entry.j)
+      addUserNode(userA)
+      addUserNode(userB)
+      addSimilarity(userA, userB, entry.value)
     })
   }
+}
+
+object Neo4JUserGraph extends Serializable {
+
+  implicit val connection = Neo4jREST("localhost", 7474, "/db/data/", "neo4j", "default")
+
+  def addUserNode(userId: String): Unit = {
+    Cypher(s"CREATE (:USER {identifier:$userId})").execute()
+  }
+
+  def addItemNode(itemId: String): Unit = {
+    Cypher(s"CREATE (:ITEM {identifier:'$itemId'})").execute()
+  }
+
+  def addUserRating(userId: String, itemId: String, rating: Double): Unit = {
+    Cypher(s"MATCH (u:USER {identifier:$userId}),(i:ITEM {identifier:'$itemId'}) CREATE UNIQUE (u)-[:RATED {rating:$rating}]->(i)").execute()
+  }
+
+  def addSimilarity(userA: String, userB: String, similarity: Double): Unit = {
+    Cypher(s"MATCH (a:USER {identifier:$userA}),(b:USER {identifier:$userB}) CREATE (a)-[:SIMILAR {similarity:$similarity}]->(b)").execute()
+  }
+
 }
