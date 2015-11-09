@@ -13,7 +13,7 @@ Afterwards, I output the data to a Neo4j graph database using [AnormCypher](http
 ## Results
 For the hackathon, I was able to demonstrate the potential of using our ratings data to compute relationships between our users. For BiblioCommons, that could provide users with a lot of benefits, such as providing recommendations for reading materials or people to follow.
 
-## What I wanted to discover by using Spark in the hackathon
+### What I wanted to discover by using Spark in the hackathon
 - how easy or difficult it would be to write this task in Spark/Scala
 - the difficulty of getting Spark up and running
 - the memory and computational complexity required by running this task as a Spark job
