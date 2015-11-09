@@ -19,11 +19,13 @@ For the hackathon, I was able to demonstrate the potential of using our ratings 
 - the ETL required for pulling data from the data source (a database)
 - how the _User x Item_ rating matrix would be created
 - the actual time it would take to compute the similarities on the matrix (and could this be done on a single worker node within the hackathon time limits?)
-Overall, Spark was a pleasant framework to use. The language API is quite straightforward if you have experience with Scala and the collections library. Spark abstracts the memory management and computational work into a distributed task, but I still have much to learn about the inner workings and configurations of this tool. With a test dataset of __4 million ratings__, it seemed feasible for BiblioCommons to use Spark to compute these similarities in a reasonable amount of time (with the right hardware too).
+
+Overall, Spark was a pleasant framework to use. The language API is quite straightforward if you have experience with Scala and the collections library. Spark abstracts the memory management and computational work into a distributed task for you, but I still have much to learn about the inner workings and configurations of this framework. With a test dataset of __4 million ratings__, it seemed feasible for BiblioCommons to use Spark to compute these similarities in a reasonable amount of time (with the right hardware too).
 
 ### Why use Neo4j?
-Neo4J was a good candidate to extract quick direct and transitive based relationships. For example, we could write simple queries to answer questions like:
-- who is similar to me?
+Neo4J was a good candidate to extract quick direct and transitive based relationships. For example, we could write simple queries to describe relationships like:
+- who is similar to me
 - who is similar to the user who is similar to me? (with n levels of depth)
-- for anyone who is similar to me and/or transitively similar to me, what ratings did they give to items that I haven't rated myself?
-Using these relationships, we could create things like reading lists, popularity lists, or even do something like [collaborative filtering](https://en.wikipedia.org/wiki/Collaborative_filtering).
+- show me cliques I belong to
+
+Using these relationships, we could create things like reading lists, popularity lists, or even do something like [collaborative filtering](https://en.wikipedia.org/wiki/Collaborative_filtering). It would be interesting to see the the effect of loading additional data into the graph, for example, the ratings themselves. Neo4j also provides an intuitive query language - _Cypher_ - that was quite easy to pick up and learn for the hackathon. There are definitely other language features to experiment with.
