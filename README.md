@@ -2,6 +2,7 @@
 
 ## What is this?
 As part of a hackathon at [BiblioCommons Inc.](http://bibliocommons.com), I created an Apache Spark job to compute user similarities using ratings information (i.e. star-ratings on books, movies, music, etc.). Using Neo4j, I then dumped the similarities into a graph for querying and viewing. Below is an example subgraph:
+
 ![user graph example](https://github.com/kdrakon/biblio-user-recommender/blob/master/graph.png)
 
 ## The Job
